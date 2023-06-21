@@ -1,3 +1,8 @@
+library(tibble)
+library(tidyr)
+library(purrr)
+library(rdist)
+
 # Refined composite multivariate generalized multiscale fuzzy entropy computation
 # Ported from MATLAB codes reported in http://dx.doi.org/10.1016/j.physa.2016.07.077 
 # Ref:
@@ -29,6 +34,7 @@ RCmvMFE <- function(X, m, r, n, tau, max_scale_factor) {
   # The first element (scale = 1) is the multivariate fuzzy entropy (mvFE)
   result <- mvFE(X, M, r, n, tau)
   RCmvMFE[1] <- result[[1]]
+  cat("Finished computation with timescale factor: 1 \n")
   
   # Iteratively compute the mvFE at each time scale factor and append the result
   # to the output vector
@@ -46,6 +52,8 @@ RCmvMFE <- function(X, m, r, n, tau, max_scale_factor) {
     PHI_M <- sum(unlist(PHI_M))
     PHI_M1 <- sum(unlist(PHI_M1))
     RCmvMFE[i] <- log(PHI_M / PHI_M1)
+    cat("Finished computation with timescale factor:", i)
+    cat("\n")
   }
   
   return(RCmvMFE)
@@ -103,7 +111,7 @@ mvFE <- function(X, M, r, n, tau) {
   A <- multivariate_embedding(X, M, tau)
   
   # Calculate the Chebyshev between the entries of the multivariate embedding vector
-  y <- dist(A, method = "maximum")  
+  y <- rdist(A, metric = "maximum") 
   y <- exp((-y^n) / r)
   # Compute the global quantity for M
   phi_m <- sum(y) * 2 / (N * (N - 1))
@@ -126,7 +134,7 @@ mvFE <- function(X, M, r, n, tau) {
   }
   
   # Calculate the Chebyshev between the entries of the multivariate embedding vector in M+1
-  z <- dist(B, method = "maximum")
+  z <- rdist(B, metric = "maximum")
   z <- exp((-z^n) / r)
   # Compute the global quantity for M+1
   phi_m1 <- sum(z) * 2 / (num_channels * N * (num_channels * N - 1))
@@ -169,4 +177,32 @@ multivariate_embedding <- function(X, M, tau) {
   }
   return(t(A))
 }
+
+
+# Experimental optimized version (TODO: see profiling)
+tibble_multivariate_embedding <- function(X, M, tau) {
+  n_channels <- nrow(X)
+  n_samples <- ncol(X)
+  
+  # Convert the data to a tibble to avoid looping
+  x_t <- as.tibble(t(X))
+  
+  # This map function computes a nested list of lists.
+  # One list for each channel j holding a list for each sample i so that: 
+  # embedded_nested_list[j] = [[xi, xi + tau[j] , . . . , xi + (M[j]−1)*tau[j]], [...],]
+  embedded_nested_list <- 
+    purrr::map(rep(1:n_channels), 
+               function(y) map(rep(1:(n_samples - max(M))), 
+                               function(x) as.numeric(t(x_t[x:tau[y]:(x+M[y]-1),1]))
+               )
+    )
+  # Each outer list of the nested list is stacked horizontally (each list becomes a column)
+  # and the numerical values contained in each list are expanded horizontally so that
+  # the total number of columns is len(sample_list) * num_channels
+  unnested_t <- unnest_wider(as.tibble(do.call(cbind,embedded_nested_list)), everything(), names_sep = '-')
+  
+  # Convert the tibble to matrix and return it
+  return (as.matrix(unnested_t))
+}
+
 
