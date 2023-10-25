@@ -24,7 +24,7 @@ RCmvMFE <- function(X, m, r, n, tau, max_scale_factor) {
   #   RCmvMFE: RCmvMFE value at each scale factor - an array of size S (max. scale factor)
   
   # Center and scale the input data X, and initialize the algorithm quantities
-  X <- scale(t(X))
+  X <- scale(X)
   r <- r * sum(apply(X, 2, sd))
   M <- rep(m, ncol(X))
   tau <- rep(tau, ncol(X))
