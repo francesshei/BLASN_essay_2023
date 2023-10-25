@@ -2,5 +2,7 @@
 .Rhistory
 .RData
 .Ruserdata
+.python-version
 BLASN_essay_2023.Rproj
 ds004504-download
+__pycache__
