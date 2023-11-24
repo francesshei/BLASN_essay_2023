@@ -11,10 +11,14 @@ DATA_FOLDER = "ds004504-download"
 f = h5py.File("data/preprocessed_subjects.hdf5", "w")
 
 
+# d = mne.filter.filter_data(a_eeg.data, 500, l_freq=1.0, h_freq=None, filter_length=2499)
+# d = mne.filter.notch_filter(a_eeg.data, 500, 50.0)
+
+
 def process_eeg(filename, *args, **kwargs):
     eeg_data = EegData.from_set_file(filename, *args, **kwargs)
     eeg_data.reject_artifacts()
-    eeg_data.filter(low_cut_f=0.5, high_cut_f=45.0)
+    eeg_data.base_filter(low_cut_f=0.5, high_cut_f=45.0)
     subject_id = filename.split("/")[1]
     f.create_dataset(subject_id, data=eeg_data.data)
     print(f"Created dataset for {subject_id}")  # return eeg_data

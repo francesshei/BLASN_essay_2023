@@ -1,4 +1,5 @@
 import mne
+from mne.filter import filter_data, notch_filter
 import numpy as np
 import matplotlib.pyplot as plt
 from autoreject import AutoReject
@@ -80,7 +81,9 @@ class EegData:
         raw_data = mne.io.read_raw_eeglab(filename)
         return EegData(raw_data, *args, **kwargs)
 
-    def filter(self, *args, low_cut_f=0.5, high_cut_f=50.0, in_place=True, **kwargs):
+    def base_filter(
+        self, *args, low_cut_f=0.5, high_cut_f=50.0, in_place=True, **kwargs
+    ):
         filtered_data = self.eeg_data.filter(
             l_freq=low_cut_f, h_freq=high_cut_f, *args, **kwargs
         )
@@ -88,6 +91,12 @@ class EegData:
             self.eeg_data = filtered_data
         else:
             return filtered_data
+
+    def filter(self, f_sample, low_cut_f, high_cut_f, notch_params=None, **kwargs):
+        data = filter_data(self.data, f_sample, low_cut_f, high_cut_f)
+        if notch_params is not None:
+            data = notch_filter(data, f_sample, **notch_params)
+        return data
 
     def reject_artifacts(self, in_place=True):
         try:
